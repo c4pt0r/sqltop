@@ -21,6 +21,9 @@ const version = "0.1"
 var (
 	host = flag.String("h", "127.0.0.1", "host")
 	port = flag.String("P", "4000", "port")
+
+	user     = flag.String("u", "root", "user")
+	password = flag.String("p", "", "password")
 )
 
 func main() {
@@ -47,10 +50,10 @@ type record struct {
 }
 
 func fetchProcessInfo() string {
-	dsn := fmt.Sprintf("root:@tcp(%s:%s)/INFORMATION_SCHEMA", *host, *port)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/INFORMATION_SCHEMA", *user, *password, *host, *port)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 	defer db.Close()
 	q := fmt.Sprintf("select ID, USER, HOST, DB, COMMAND, TIME, STATE, MEM, info  from PROCESSLIST")
