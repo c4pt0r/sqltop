@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	ui "gopkg.in/gizak/termui.v1"
@@ -49,6 +50,30 @@ type record struct {
 	sqlText                     interface{}
 }
 
+type flags struct {
+	orderColumn string
+	mu          sync.RWMutex
+}
+
+var globalFlags flags
+
+func (f *flags) ToggleOrder(name string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.orderColumn != "" {
+		f.orderColumn = ""
+	} else {
+		f.orderColumn = name
+	}
+}
+
+func (f *flags) GetOrder() string {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.orderColumn
+}
+
 func fetchProcessInfo() string {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/INFORMATION_SCHEMA", *user, *password, *host, *port)
 	db, err := sql.Open("mysql", dsn)
@@ -56,7 +81,11 @@ func fetchProcessInfo() string {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	q := fmt.Sprintf("select ID, USER, HOST, DB, COMMAND, TIME, STATE, MEM, info  from PROCESSLIST")
+	q := fmt.Sprintf("SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, MEM, info FROM PROCESSLIST")
+	if globalFlags.GetOrder() != "" {
+		q += " ORDER BY " + globalFlags.GetOrder() + " DESC"
+	}
+
 	rows, err := db.Query(q)
 	if err != nil {
 		log.Fatal(err)
@@ -87,7 +116,12 @@ func fetchProcessInfo() string {
 	info := "sqltop version 0.1"
 	info += "\nProcesses: %d total, running: %d  Memory: %d,  using DB: %d\n"
 	text := fmt.Sprintf(info, totalProcesses, totalProcesses, totalMem, len(usingDBs))
-	text += fmt.Sprintf("\n\ndetails\n")
+	text += fmt.Sprintf("\n\ndetails")
+	if globalFlags.GetOrder() != "" {
+		text += " order by: " + globalFlags.GetOrder() + "\n"
+	} else {
+		text += "\n"
+	}
 
 	text += fmt.Sprintf("ID      USER         HOST            DB                COMMAND   TIME     STATE  MEM      SQL\n")
 
@@ -125,7 +159,6 @@ func refreshUI() {
 	go func() {
 		for {
 			par.Text = fetchProcessInfo()
-
 			redraw <- struct{}{}
 			// update every 2 seconds
 			time.Sleep(2 * time.Second)
@@ -136,8 +169,13 @@ func refreshUI() {
 	for {
 		select {
 		case e := <-evt:
-			if e.Type == ui.EventKey && (e.Ch == 'q' || e.Key == ui.KeyCtrlC) {
-				cleanExit()
+			if e.Type == ui.EventKey {
+				if e.Ch == 'q' || e.Key == ui.KeyCtrlC {
+					cleanExit()
+				}
+				if e.Ch == 'o' {
+					globalFlags.ToggleOrder("TIME")
+				}
 			}
 
 		case <-redraw:
