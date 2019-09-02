@@ -14,8 +14,6 @@ import (
 
 	"database/sql"
 
-	uiv3 "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -96,8 +94,7 @@ func fetchProcessInfo() string {
 	info += "\nProcesses: %d total, running: %d,  using DB: %d\n"
 	text := fmt.Sprintf(info, totalProcesses, totalProcesses, len(usingDBs))
 	text += fmt.Sprintf("\n\nTop %d order by time desc:\n", *count)
-
-	text += fmt.Sprintf("ID      USER                      HOST                DB                COMMAND   TIME     STATE     SQL\n")
+	text += fmt.Sprintf("%-6s  %-20s  %-20s  %-20s  %-7s  %-6s  %-8s  %-15s\n", "ID", "USER", "HOST", "DB", "COMMAND", "TIME", "STATE", "SQL")
 
 	var sb strings.Builder
 	for _, r := range records {
@@ -113,20 +110,6 @@ func fetchProcessInfo() string {
 	}
 
 	return text + sb.String()
-}
-
-func newHotRegionBox(x, y int) *widgets.SparklineGroup {
-	data := []float64{4, 2, 1, 6, 3, 9, 1, 4, 2, 15, 14, 9, 8, 6, 10, 13, 15, 12, 10, 5, 3, 6, 1, 7, 10, 10, 14, 13, 6}
-
-	sl := widgets.NewSparkline()
-	sl.Data = data[3:]
-	sl.LineColor = uiv3.ColorGreen
-
-	slg := widgets.NewSparklineGroup(sl)
-	slg.Title = "Table1"
-	slg.SetRect(x, y, x+ui.TermWidth()/5, 5)
-
-	return slg
 }
 
 // refreshUI periodically refreshes the screen.
