@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,6 +14,8 @@ import (
 
 	"database/sql"
 
+	uiv3 "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -27,6 +30,7 @@ var (
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	flag.Parse()
 	err := ui.Init()
 	if err != nil {
@@ -111,9 +115,24 @@ func fetchProcessInfo() string {
 	return text + sb.String()
 }
 
+func newHotRegionBox(x, y int) *widgets.SparklineGroup {
+	data := []float64{4, 2, 1, 6, 3, 9, 1, 4, 2, 15, 14, 9, 8, 6, 10, 13, 15, 12, 10, 5, 3, 6, 1, 7, 10, 10, 14, 13, 6}
+
+	sl := widgets.NewSparkline()
+	sl.Data = data[3:]
+	sl.LineColor = uiv3.ColorGreen
+
+	slg := widgets.NewSparklineGroup(sl)
+	slg.Title = "Table1"
+	slg.SetRect(x, y, x+ui.TermWidth()/5, 5)
+
+	return slg
+}
+
 // refreshUI periodically refreshes the screen.
 func refreshUI() {
 	par := ui.NewPar("")
+	par.PaddingTop = 5
 	par.HasBorder = false
 	par.Height = ui.TermHeight()
 	par.Width = ui.TermWidth()
@@ -123,6 +142,21 @@ func refreshUI() {
 	// Start with the topviewGrid by default
 	ui.Body.Rows = topViewGrid.Rows
 	ui.Body.Align()
+
+	var boxes []*hotTableWidget
+	var offset int
+	for i := 0; i < 5; i++ {
+		title := fmt.Sprintf("Table %d", i)
+		w := newHotTableWidget(title, offset, 0)
+		go func(widget *hotTableWidget) {
+			for {
+				widget.pushDataPoint(float64(rand.Intn(100)))
+				time.Sleep(200 * time.Millisecond)
+			}
+		}(w)
+		boxes = append(boxes, w)
+		offset += ui.TermWidth() / 5
+	}
 
 	redraw := make(chan struct{})
 
@@ -146,6 +180,9 @@ func refreshUI() {
 
 		case <-redraw:
 			ui.Render(ui.Body)
+			for i := 0; i < 5; i++ {
+				boxes[i].render()
+			}
 		}
 	}
 }
