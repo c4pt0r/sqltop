@@ -8,6 +8,47 @@ import (
 	ui "github.com/gizak/termui/v3"
 )
 
+type ProcessListGrid struct {
+	grid *ui.Grid
+	par  *widgets.Paragraph
+	x, y int // top, left
+}
+
+func newProcessListGrid(x, y int) *ProcessListGrid {
+	termWidth, termHeight := ui.TerminalDimensions()
+
+	par := widgets.NewParagraph()
+	par.Border = false
+
+	grid := ui.NewGrid()
+	grid.SetRect(x, y, termWidth, termHeight)
+	grid.Set(
+		ui.NewRow(1.0,
+			ui.NewCol(1.0, par),
+		),
+	)
+	return &ProcessListGrid{
+		grid: grid,
+		par:  par,
+		x:    x,
+		y:    y,
+	}
+}
+
+// it's caller's duty to be threaded safe
+func (pg *ProcessListGrid) SetText(str string) {
+	pg.par.Text = str
+}
+
+func (pg *ProcessListGrid) OnResize(payload ui.Resize) {
+	pg.grid.SetRect(pg.x, pg.y, payload.Width, payload.Height-15)
+	ui.Render(pg.grid)
+}
+
+func (pg *ProcessListGrid) Render() {
+	ui.Render(pg.grid)
+}
+
 type ProcessRecord struct {
 	id, time               int
 	user, host, command    string
