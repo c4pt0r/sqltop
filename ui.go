@@ -12,29 +12,31 @@ type UIController interface {
 }
 
 type TextGrid struct {
-	grid *ui.Grid
-	par  *widgets.Paragraph
-	x, y int // top, left
+	grid   *ui.Grid
+	par    *widgets.Paragraph
+	x, y   int // top, left
+	height int
 }
 
-func newTextGrid(x, y int) *TextGrid {
-	termWidth, termHeight := ui.TerminalDimensions()
+func newTextGrid(x, y, height int) *TextGrid {
+	termWidth, _ := ui.TerminalDimensions()
 
 	par := widgets.NewParagraph()
 	par.Border = false
 
 	grid := ui.NewGrid()
-	grid.SetRect(x, y, termWidth, termHeight)
+	grid.SetRect(x, y, termWidth, y+height)
 	grid.Set(
 		ui.NewRow(1.0,
 			ui.NewCol(1.0, par),
 		),
 	)
 	return &TextGrid{
-		grid: grid,
-		par:  par,
-		x:    x,
-		y:    y,
+		grid:   grid,
+		par:    par,
+		x:      x,
+		y:      y,
+		height: height,
 	}
 }
 
@@ -44,7 +46,7 @@ func (g *TextGrid) SetText(str string) {
 }
 
 func (g *TextGrid) OnResize(payload ui.Resize) {
-	g.grid.SetRect(g.x, g.y, payload.Width, payload.Height-15)
+	g.grid.SetRect(g.x, g.y, payload.Width, g.height)
 	ui.Render(g.grid)
 }
 
